@@ -1,4 +1,4 @@
-use axum::{routing::get, Router};
+use conduit::app;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -22,11 +22,6 @@ async fn main() {
     tracing::info!("Listening on at http://{}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await.unwrap();
-}
-
-fn app() -> Router {
-    // build our application with a single route
-    Router::new().route("/", get(|| async { "Hello, World!" }))
 }
 
 #[cfg(test)]
