@@ -1,9 +1,11 @@
-use conduit::app;
+use conduit::{app, jwt, AppState};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() {
+    let _ = dotenvy::dotenv();
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -15,40 +17,15 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app = app().layer(TraceLayer::new_for_http());
+    let state = AppState {
+        jwt: jwt::Config::try_from_env().unwrap(),
+    };
+
+    let app = app(state).layer(TraceLayer::new_for_http());
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     tracing::info!("Listening on at http://{}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await.unwrap();
-}
-
-#[cfg(test)]
-mod tests {
-    use axum::{
-        body::Body,
-        http::{Request, StatusCode},
-    };
-    use http_body_util::BodyExt;
-    use tower::ServiceExt;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn hello_world() {
-        let app = app();
-
-        // `Router` implements `tower::Service<Request<Body>>` so we can
-        // call it like any tower service, no need to run an HTTP server.
-        let response = app
-            .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        assert_eq!(&body[..], b"Hello, World!");
-    }
 }

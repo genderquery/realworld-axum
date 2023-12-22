@@ -1,12 +1,15 @@
 use std::net::SocketAddr;
+use std::time::Duration;
 
-use conduit::app;
+use conduit::{app, jwt, AppState};
+use http::header;
 use http_body::Body;
 use http_body_util::{BodyExt, Empty};
 use hyper::client::conn::http1::handshake;
 use hyper::{body::Bytes, client::conn::http1::SendRequest};
 use hyper::{Request, StatusCode};
 use hyper_util::rt::TokioIo;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
 
 async fn spawn_server() -> SocketAddr {
@@ -14,7 +17,7 @@ async fn spawn_server() -> SocketAddr {
     let address = listener.local_addr().unwrap();
 
     tokio::spawn(async move {
-        axum::serve(listener, app()).await.unwrap();
+        axum::serve(listener, app(state())).await.unwrap();
     });
 
     address
@@ -41,22 +44,52 @@ where
     sender
 }
 
+fn state() -> AppState {
+    AppState {
+        jwt: jwt::Config {
+            expiration: Duration::from_secs(3600),
+            encoding_key: EncodingKey::from_secret("secret".as_bytes()),
+            decoding_key: DecodingKey::from_secret("secret".as_bytes()),
+        },
+    }
+}
+
 #[tokio::test]
-async fn test_app() {
+async fn test_authorization() {
     let address = spawn_server().await;
     let mut client = client(address).await;
 
-    let req = Request::builder()
+    let request = Request::builder()
         .uri(format!("http://{address}/"))
-        .header(hyper::header::HOST, "localhost")
+        .header(header::HOST, "localhost")
         .body(Empty::<Bytes>::new())
         .unwrap();
 
-    let response = client.send_request(req).await.unwrap();
+    let response = client.send_request(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    let request = Request::builder()
+        .uri(format!("http://{address}/token"))
+        .header(header::HOST, "localhost")
+        .body(Empty::<Bytes>::new())
+        .unwrap();
+
+    let response = client.send_request(request).await.unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let token = response.into_body().collect().await.unwrap().to_bytes();
+    let token = String::from_utf8(token.into()).unwrap();
 
-    assert_eq!(&body[..], b"Hello, World!");
+    let request = Request::builder()
+        .uri(format!("http://{address}/"))
+        .header(header::HOST, "localhost")
+        .header(header::AUTHORIZATION, format!("Token {token}"))
+        .body(Empty::<Bytes>::new())
+        .unwrap();
+
+    let response = client.send_request(request).await.unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
 }
