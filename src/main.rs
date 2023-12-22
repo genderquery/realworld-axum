@@ -1,4 +1,4 @@
-use conduit::{app, jwt, AppState};
+use conduit::{app, jwt, AppState, MockDb};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -19,6 +19,7 @@ async fn main() {
 
     let state = AppState {
         jwt: jwt::Config::try_from_env().unwrap(),
+        db: MockDb::default(),
     };
 
     let app = app(state).layer(TraceLayer::new_for_http());
