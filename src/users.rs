@@ -7,7 +7,10 @@ use crate::{
     error::AppError,
     jwt::{self, Claims},
     password::{hash_password, verify_password},
-    validation::{Validate, ValidationErrors},
+    validation::{
+        validate_not_empty, validate_unique_email, validate_unique_username, Validate,
+        ValidationErrors,
+    },
     AppState,
 };
 
@@ -142,33 +145,6 @@ impl Validate for NewUser {
         validate_not_empty(&mut errors, "password", &self.password);
 
         errors.is_empty().then_some(()).ok_or(errors)
-    }
-}
-
-fn validate_unique_username(state: &AppState, username: &str) -> Result<(), ValidationErrors> {
-    let mut errors = ValidationErrors::new();
-
-    if state.db.read().unwrap().contains_key(username) {
-        errors.add("username", "has already been taken");
-    }
-
-    errors.is_empty().then_some(()).ok_or(errors)
-}
-
-fn validate_unique_email(state: &AppState, email: &str) -> Result<(), ValidationErrors> {
-    let mut errors = ValidationErrors::new();
-
-    let db = state.db.read().unwrap();
-    if db.values().any(|(_, e, _)| e == email) {
-        errors.add("email", "has already been taken");
-    }
-
-    errors.is_empty().then_some(()).ok_or(errors)
-}
-
-fn validate_not_empty(errors: &mut ValidationErrors, field: &'static str, value: &str) {
-    if value.is_empty() {
-        errors.add(field, "can't be blank");
     }
 }
 
