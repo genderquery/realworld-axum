@@ -34,6 +34,29 @@ async fn test_registration() {
 }
 
 #[tokio::test]
+async fn test_registration_validation() {
+    let server = new_test_server();
+
+    let user = json!({
+        "username": "",
+        "email": "",
+        "password": ""
+    });
+
+    let response = server.post("/api/users").json(&user).await;
+    let body: Value = response.json();
+
+    assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        response.header(header::CONTENT_TYPE),
+        mime::APPLICATION_JSON.as_ref()
+    );
+    assert_eq!(body["errors"]["username"][0], "can't be blank");
+    assert_eq!(body["errors"]["email"][0], "can't be blank");
+    assert_eq!(body["errors"]["password"][0], "can't be blank");
+}
+
+#[tokio::test]
 async fn test_registration_existing_credentials() {
     let server = new_test_server();
 
@@ -78,6 +101,27 @@ async fn test_login() {
     assert_eq!(body["username"], user["username"]);
     assert_eq!(body["email"], user["email"]);
     assert!(body["token"].is_string());
+}
+
+#[tokio::test]
+async fn test_login_validation() {
+    let server = new_test_server();
+
+    let user = json!({
+        "username": "",
+        "password": ""
+    });
+
+    let response = server.post("/api/users/login").json(&user).await;
+    let body: Value = response.json();
+
+    assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        response.header(header::CONTENT_TYPE),
+        mime::APPLICATION_JSON.as_ref()
+    );
+    assert_eq!(body["errors"]["username"][0], "can't be blank");
+    assert_eq!(body["errors"]["password"][0], "can't be blank");
 }
 
 #[tokio::test]

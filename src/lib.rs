@@ -13,6 +13,7 @@ mod error;
 pub mod jwt;
 mod password;
 mod users;
+mod validation;
 
 pub fn app(state: AppState) -> Router {
     // build our application with a single route
