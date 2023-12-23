@@ -89,6 +89,43 @@ pub async fn get_current_user(
     }))
 }
 
+#[debug_handler]
+pub async fn update_user(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(update_user): Json<UpdateUser>,
+) -> Result<Json<User>, AppError> {
+    update_user.validate()?;
+
+    if let Some(username) = update_user.username.as_ref() {
+        validate_unique_username(&state, username)?;
+    }
+    if let Some(email) = update_user.email.as_ref() {
+        validate_unique_email(&state, email)?;
+    }
+
+    let mut db = state.db.write().unwrap();
+    let (username, email, password_hash) = db.get_mut(&claims.username).unwrap();
+
+    if let Some(new_username) = update_user.username.as_ref() {
+        *username = new_username.to_owned();
+    }
+    if let Some(new_email) = update_user.email.as_ref() {
+        *email = new_email.to_owned();
+    }
+    if let Some(new_password) = update_user.password.as_ref() {
+        *password_hash = hash_password(new_password)?;
+    }
+
+    let token = jwt::create_token(&state.jwt, username, email)?;
+
+    Ok(Json(User {
+        username: username.to_owned(),
+        email: email.to_owned(),
+        token,
+    }))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NewUser {
     username: String,
@@ -164,13 +201,13 @@ impl Validate for UpdateUser {
         let mut errors = ValidationErrors::new();
 
         if let Some(username) = self.username.as_ref() {
-            validate_not_empty(&mut errors, "username", &username);
+            validate_not_empty(&mut errors, "username", username);
         }
         if let Some(email) = self.email.as_ref() {
-            validate_not_empty(&mut errors, "email", &email);
+            validate_not_empty(&mut errors, "email", email);
         }
         if let Some(password) = self.password.as_ref() {
-            validate_not_empty(&mut errors, "password", &password);
+            validate_not_empty(&mut errors, "password", password);
         }
 
         errors.is_empty().then_some(()).ok_or(errors)

@@ -20,7 +20,10 @@ pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/api/users", post(users::register))
         .route("/api/users/login", post(users::login))
-        .route("/api/user", get(users::get_current_user))
+        .route(
+            "/api/user",
+            get(users::get_current_user).put(users::update_user),
+        )
         .with_state(state)
 }
 

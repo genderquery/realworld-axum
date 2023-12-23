@@ -10,6 +10,18 @@ const TEST_USERNAME: &str = "AzureDiamond";
 const TEST_EMAIL: &str = "example@example.com";
 const TEST_PASSWORD: &str = "hunter2";
 
+fn new_test_server() -> TestServer {
+    let app_state = AppState {
+        jwt: jwt::Config {
+            expiration: Duration::from_secs(3600),
+            encoding_key: EncodingKey::from_secret(b"secret"),
+            decoding_key: DecodingKey::from_secret(b"secret"),
+        },
+        db: MockDb::default(),
+    };
+    TestServer::new(app(app_state)).unwrap()
+}
+
 #[tokio::test]
 async fn test_registration() {
     let server = new_test_server();
@@ -186,14 +198,57 @@ async fn test_get_current_user_no_token() {
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
-fn new_test_server() -> TestServer {
-    let app_state = AppState {
-        jwt: jwt::Config {
-            expiration: Duration::from_secs(3600),
-            encoding_key: EncodingKey::from_secret(b"secret"),
-            decoding_key: DecodingKey::from_secret(b"secret"),
-        },
-        db: MockDb::default(),
-    };
-    TestServer::new(app(app_state)).unwrap()
+#[tokio::test]
+async fn test_update_user() {
+    let server = new_test_server();
+
+    let user = json!({
+        "username": TEST_USERNAME,
+        "email": TEST_EMAIL,
+        "password": TEST_PASSWORD
+    });
+
+    let response = server.post("/api/users").json(&user).await;
+    let body: Value = response.json();
+    let token = body["token"].as_str().unwrap();
+
+    let update_user = json!({
+        "username": "newusername",
+        "email": "newemail@example.com",
+        "password": "newpassword"
+    });
+
+    let response = server
+        .put("/api/user")
+        .add_header(
+            header::AUTHORIZATION,
+            format!("Token {token}").try_into().unwrap(),
+        )
+        .json(&update_user)
+        .await;
+    let body: Value = response.json();
+
+    assert_eq!(response.status_code(), StatusCode::OK);
+    assert_eq!(
+        response.header(header::CONTENT_TYPE),
+        mime::APPLICATION_JSON.as_ref()
+    );
+    assert_eq!(body["username"], update_user["username"]);
+    assert_eq!(body["email"], update_user["email"]);
+    assert!(body["token"].is_string());
+}
+
+#[tokio::test]
+async fn test_update_user_no_token() {
+    let server = new_test_server();
+
+    let update_user = json!({
+        "username": TEST_USERNAME,
+        "email": TEST_EMAIL,
+        "password": TEST_PASSWORD
+    });
+
+    let response = server.put("/api/user").json(&update_user).await;
+
+    assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
