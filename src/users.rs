@@ -100,23 +100,11 @@ impl Validate for NewUser {
     fn validate(&self) -> Result<(), ValidationErrors> {
         let mut errors = ValidationErrors::new();
 
-        if self.username.is_empty() {
-            errors.add("username", "can't be blank");
-        }
+        validate_not_empty(&mut errors, "username", &self.username);
+        validate_not_empty(&mut errors, "email", &self.email);
+        validate_not_empty(&mut errors, "password", &self.password);
 
-        if self.email.is_empty() {
-            errors.add("email", "can't be blank");
-        }
-
-        if self.password.is_empty() {
-            errors.add("password", "can't be blank");
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        errors.is_empty().then_some(()).ok_or(errors)
     }
 }
 
@@ -127,30 +115,23 @@ fn validate_unique_username(state: &AppState, username: &str) -> Result<(), Vali
         errors.add("username", "has already been taken");
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
-    }
+    errors.is_empty().then_some(()).ok_or(errors)
 }
 
 fn validate_unique_email(state: &AppState, email: &str) -> Result<(), ValidationErrors> {
     let mut errors = ValidationErrors::new();
 
-    if state
-        .db
-        .read()
-        .unwrap()
-        .values()
-        .any(|(_, e, _)| e == email)
-    {
+    let db = state.db.read().unwrap();
+    if db.values().any(|(_, e, _)| e == email) {
         errors.add("email", "has already been taken");
     }
 
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(errors)
+    errors.is_empty().then_some(()).ok_or(errors)
+}
+
+fn validate_not_empty(errors: &mut ValidationErrors, field: &'static str, value: &str) {
+    if value.is_empty() {
+        errors.add(field, "can't be blank");
     }
 }
 
@@ -164,19 +145,35 @@ impl Validate for LoginUser {
     fn validate(&self) -> Result<(), ValidationErrors> {
         let mut errors = ValidationErrors::new();
 
-        if self.username.is_empty() {
-            errors.add("username", "can't be blank");
+        validate_not_empty(&mut errors, "username", &self.username);
+        validate_not_empty(&mut errors, "password", &self.password);
+
+        errors.is_empty().then_some(()).ok_or(errors)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUser {
+    username: Option<String>,
+    email: Option<String>,
+    password: Option<String>,
+}
+
+impl Validate for UpdateUser {
+    fn validate(&self) -> Result<(), ValidationErrors> {
+        let mut errors = ValidationErrors::new();
+
+        if let Some(username) = self.username.as_ref() {
+            validate_not_empty(&mut errors, "username", &username);
+        }
+        if let Some(email) = self.email.as_ref() {
+            validate_not_empty(&mut errors, "email", &email);
+        }
+        if let Some(password) = self.password.as_ref() {
+            validate_not_empty(&mut errors, "password", &password);
         }
 
-        if self.password.is_empty() {
-            errors.add("password", "can't be blank");
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
+        errors.is_empty().then_some(()).ok_or(errors)
     }
 }
 
