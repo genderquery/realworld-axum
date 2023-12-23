@@ -26,13 +26,15 @@ fn new_test_server() -> TestServer {
 async fn test_registration() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let response = server.post("/api/users").json(&user).await;
+    let response = server.post("/api/users").json(&payload).await;
     let body: Value = response.json();
 
     assert_eq!(response.status_code(), StatusCode::CREATED);
@@ -40,22 +42,24 @@ async fn test_registration() {
         response.header(header::CONTENT_TYPE),
         mime::APPLICATION_JSON.as_ref()
     );
-    assert_eq!(body["username"], user["username"]);
-    assert_eq!(body["email"], user["email"]);
-    assert!(body["token"].is_string());
+    assert_eq!(body["user"]["username"], payload["user"]["username"]);
+    assert_eq!(body["user"]["email"], payload["user"]["email"]);
+    assert!(body["user"]["token"].is_string());
 }
 
 #[tokio::test]
 async fn test_registration_validation() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": "",
-        "email": "",
-        "password": ""
+    let payload = json!({
+        "user": {
+            "username": "",
+            "email": "",
+            "password": ""
+        }
     });
 
-    let response = server.post("/api/users").json(&user).await;
+    let response = server.post("/api/users").json(&payload).await;
     let body: Value = response.json();
 
     assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -72,15 +76,17 @@ async fn test_registration_validation() {
 async fn test_registration_existing_credentials() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let _ = server.post("/api/users").json(&user).await;
+    let _ = server.post("/api/users").json(&payload).await;
 
-    let response = server.post("/api/users").json(&user).await;
+    let response = server.post("/api/users").json(&payload).await;
 
     assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
 }
@@ -89,20 +95,24 @@ async fn test_registration_existing_credentials() {
 async fn test_login() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let _ = server.post("/api/users").json(&user).await;
+    let _ = server.post("/api/users").json(&payload).await;
 
-    let login_user = json!({
-        "username": TEST_USERNAME,
-        "password": TEST_PASSWORD
+    let login_payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let response = server.post("/api/users/login").json(&login_user).await;
+    let response = server.post("/api/users/login").json(&login_payload).await;
     let body: Value = response.json();
 
     assert_eq!(response.status_code(), StatusCode::OK);
@@ -110,21 +120,23 @@ async fn test_login() {
         response.header(header::CONTENT_TYPE),
         mime::APPLICATION_JSON.as_ref()
     );
-    assert_eq!(body["username"], user["username"]);
-    assert_eq!(body["email"], user["email"]);
-    assert!(body["token"].is_string());
+    assert_eq!(body["user"]["username"], payload["user"]["username"]);
+    assert_eq!(body["user"]["email"], payload["user"]["email"]);
+    assert!(body["user"]["token"].is_string());
 }
 
 #[tokio::test]
 async fn test_login_validation() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": "",
-        "password": ""
+    let payload = json!({
+        "user": {
+            "username": "",
+            "password": ""
+        }
     });
 
-    let response = server.post("/api/users/login").json(&user).await;
+    let response = server.post("/api/users/login").json(&payload).await;
     let body: Value = response.json();
 
     assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -140,20 +152,24 @@ async fn test_login_validation() {
 async fn test_login_invalid_credentials() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let paylaod = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let _ = server.post("/api/users").json(&user).await;
+    let _ = server.post("/api/users").json(&paylaod).await;
 
-    let login_user = json!({
-        "username": TEST_USERNAME,
-        "password": "incorrect"
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "password": "incorrect"
+        }
     });
 
-    let response = server.post("/api/users/login").json(&login_user).await;
+    let response = server.post("/api/users/login").json(&payload).await;
 
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
@@ -162,15 +178,17 @@ async fn test_login_invalid_credentials() {
 async fn test_get_current_user() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let response = server.post("/api/users").json(&user).await;
+    let response = server.post("/api/users").json(&payload).await;
     let body: Value = response.json();
-    let token = body["token"].as_str().unwrap();
+    let token = body["user"]["token"].as_str().unwrap();
 
     let response = server
         .get("/api/user")
@@ -186,9 +204,9 @@ async fn test_get_current_user() {
         response.header(header::CONTENT_TYPE),
         mime::APPLICATION_JSON.as_ref()
     );
-    assert_eq!(body["username"], user["username"]);
-    assert_eq!(body["email"], user["email"]);
-    assert!(body["token"].is_string());
+    assert_eq!(body["user"]["username"], payload["user"]["username"]);
+    assert_eq!(body["user"]["email"], payload["user"]["email"]);
+    assert!(body["user"]["token"].is_string());
 }
 
 #[tokio::test]
@@ -202,20 +220,24 @@ async fn test_get_current_user_no_token() {
 async fn test_update_user() {
     let server = new_test_server();
 
-    let user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let response = server.post("/api/users").json(&user).await;
+    let response = server.post("/api/users").json(&payload).await;
     let body: Value = response.json();
-    let token = body["token"].as_str().unwrap();
+    let token = body["user"]["token"].as_str().unwrap();
 
-    let update_user = json!({
-        "username": "newusername",
-        "email": "newemail@example.com",
-        "password": "newpassword"
+    let payload = json!({
+        "user": {
+            "username": "newusername",
+            "email": "newemail@example.com",
+            "password": "newpassword"
+        }
     });
 
     let response = server
@@ -224,7 +246,7 @@ async fn test_update_user() {
             header::AUTHORIZATION,
             format!("Token {token}").try_into().unwrap(),
         )
-        .json(&update_user)
+        .json(&payload)
         .await;
     let body: Value = response.json();
 
@@ -233,22 +255,24 @@ async fn test_update_user() {
         response.header(header::CONTENT_TYPE),
         mime::APPLICATION_JSON.as_ref()
     );
-    assert_eq!(body["username"], update_user["username"]);
-    assert_eq!(body["email"], update_user["email"]);
-    assert!(body["token"].is_string());
+    assert_eq!(body["user"]["username"], payload["user"]["username"]);
+    assert_eq!(body["user"]["email"], payload["user"]["email"]);
+    assert!(body["user"]["token"].is_string());
 }
 
 #[tokio::test]
 async fn test_update_user_no_token() {
     let server = new_test_server();
 
-    let update_user = json!({
-        "username": TEST_USERNAME,
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD
+    let payload = json!({
+        "user": {
+            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD
+        }
     });
 
-    let response = server.put("/api/user").json(&update_user).await;
+    let response = server.put("/api/user").json(&payload).await;
 
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }

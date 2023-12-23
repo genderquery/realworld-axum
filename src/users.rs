@@ -17,8 +17,10 @@ use crate::{
 #[debug_handler]
 pub async fn register(
     State(state): State<AppState>,
-    Json(user): Json<NewUser>,
-) -> Result<(StatusCode, Json<User>), AppError> {
+    Json(payload): Json<NewUserRequest>,
+) -> Result<(StatusCode, Json<UserResponse>), AppError> {
+    let user = payload.user;
+
     user.validate()?;
     validate_unique_username(&state, &user.username)?;
     validate_unique_email(&state, &user.email)?;
@@ -38,10 +40,12 @@ pub async fn register(
 
     Ok((
         StatusCode::CREATED,
-        Json(User {
-            username: user.username,
-            email: user.email,
-            token,
+        Json(UserResponse {
+            user: User {
+                username: user.username,
+                email: user.email,
+                token,
+            },
         }),
     ))
 }
@@ -49,8 +53,10 @@ pub async fn register(
 #[debug_handler]
 pub async fn login(
     State(state): State<AppState>,
-    Json(user): Json<LoginUser>,
-) -> Result<Json<User>, AppError> {
+    Json(payload): Json<LoginUserRequest>,
+) -> Result<Json<UserResponse>, AppError> {
+    let user = payload.user;
+
     user.validate()?;
 
     let (username, email, password_hash) =
@@ -65,10 +71,12 @@ pub async fn login(
 
     let token = jwt::create_token(&state.jwt, &username, &email)?;
 
-    Ok(Json(User {
-        username: username.to_owned(),
-        email: email.to_owned(),
-        token,
+    Ok(Json(UserResponse {
+        user: User {
+            username: username.to_owned(),
+            email: email.to_owned(),
+            token,
+        },
     }))
 }
 
@@ -76,7 +84,7 @@ pub async fn login(
 pub async fn get_current_user(
     State(state): State<AppState>,
     claims: Claims,
-) -> Result<Json<User>, AppError> {
+) -> Result<Json<UserResponse>, AppError> {
     let db = state.db.read().unwrap();
     let (username, email, _) = match db.get(&claims.username) {
         Some(user) => user,
@@ -85,10 +93,12 @@ pub async fn get_current_user(
 
     let token = jwt::create_token(&state.jwt, username, email)?;
 
-    Ok(Json(User {
-        username: username.to_owned(),
-        email: email.to_owned(),
-        token,
+    Ok(Json(UserResponse {
+        user: User {
+            username: username.to_owned(),
+            email: email.to_owned(),
+            token,
+        },
     }))
 }
 
@@ -96,8 +106,10 @@ pub async fn get_current_user(
 pub async fn update_user(
     State(state): State<AppState>,
     claims: Claims,
-    Json(update_user): Json<UpdateUser>,
-) -> Result<Json<User>, AppError> {
+    Json(payload): Json<UpdateUserRequest>,
+) -> Result<Json<UserResponse>, AppError> {
+    let update_user = payload.user;
+
     update_user.validate()?;
 
     if let Some(username) = update_user.username.as_ref() {
@@ -122,11 +134,18 @@ pub async fn update_user(
 
     let token = jwt::create_token(&state.jwt, username, email)?;
 
-    Ok(Json(User {
-        username: username.to_owned(),
-        email: email.to_owned(),
-        token,
+    Ok(Json(UserResponse {
+        user: User {
+            username: username.to_owned(),
+            email: email.to_owned(),
+            token,
+        },
     }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewUserRequest {
+    user: NewUser,
 }
 
 #[derive(Debug, Deserialize)]
@@ -149,6 +168,11 @@ impl Validate for NewUser {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct LoginUserRequest {
+    user: LoginUser,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct LoginUser {
     username: String,
     password: String,
@@ -163,6 +187,11 @@ impl Validate for LoginUser {
 
         errors.is_empty().then_some(()).ok_or(errors)
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserRequest {
+    user: UpdateUser,
 }
 
 #[derive(Debug, Deserialize)]
@@ -188,6 +217,11 @@ impl Validate for UpdateUser {
 
         errors.is_empty().then_some(()).ok_or(errors)
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserResponse {
+    user: User,
 }
 
 #[derive(Debug, Serialize)]
