@@ -1,4 +1,4 @@
-use axum::{async_trait, extract::State, Json};
+use axum::{extract::State, Json};
 use axum_macros::debug_handler;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -9,10 +9,7 @@ use crate::{
     error::AppError,
     jwt::{self, Claims},
     password::{hash_password, verify_password},
-    validation::{
-        validate_not_empty, validate_unique_email, validate_unique_username, Validate,
-        ValidationErrors, ValidationErrorsWrapper,
-    },
+    validation::{validate_not_empty, ValidationErrors},
     AppState, Database,
 };
 
@@ -23,7 +20,16 @@ pub async fn register(
     Json(payload): Json<NewUserRequest>,
 ) -> Result<(StatusCode, Json<UserResponse>), AppError> {
     let new_user = payload.user;
-    new_user.validate(&pool).await?;
+
+    let mut errors = ValidationErrors::new();
+    if validate_not_empty(&mut errors, "username", &new_user.username) {
+        validate_username_unique(&mut errors, &pool, &new_user.username).await?;
+    }
+    if validate_not_empty(&mut errors, "email", &new_user.email) {
+        validate_email_unique(&mut errors, &pool, &new_user.email).await?;
+    }
+    validate_not_empty(&mut errors, "password", &new_user.password);
+    errors.into_result()?;
 
     let password_hash = hash_password(&new_user.password)?;
     let user =
@@ -49,7 +55,11 @@ pub async fn login(
     Json(payload): Json<LoginUserRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
     let login_user = payload.user;
-    login_user.validate(&pool).await?;
+
+    let mut errors = ValidationErrors::new();
+    validate_not_empty(&mut errors, "username", &login_user.username);
+    validate_not_empty(&mut errors, "password", &login_user.password);
+    errors.into_result()?;
 
     let maybe_user = db::users::get_by_username(&pool, &login_user.username).await?;
     let user = match maybe_user {
@@ -109,7 +119,6 @@ pub async fn update_user(
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
     let update_user = payload.user;
-    update_user.validate(&pool).await?;
 
     let mut user = match db::users::get_by_username(&pool, &claims.username).await? {
         Some(user) => user,
@@ -118,13 +127,21 @@ pub async fn update_user(
         }
     };
 
+    let mut errors = ValidationErrors::new();
     if let Some(username) = update_user.username {
+        if validate_not_empty(&mut errors, "username", &username) {
+            validate_username_unique(&mut errors, &pool, &username).await?;
+        }
         user.username = username;
     }
     if let Some(email) = update_user.email {
+        if validate_not_empty(&mut errors, "email", &email) {
+            validate_email_unique(&mut errors, &pool, &email).await?;
+        }
         user.email = email;
     }
     if let Some(password) = update_user.password {
+        validate_not_empty(&mut errors, "password", &password);
         user.password_hash = hash_password(&password)?;
     }
     if let Some(bio) = update_user.bio {
@@ -133,6 +150,7 @@ pub async fn update_user(
     if let Some(image) = update_user.image {
         user.image = Some(image);
     }
+    errors.into_result()?;
 
     db::users::update(
         &pool,
@@ -167,27 +185,6 @@ pub struct NewUser {
     password: String,
 }
 
-#[async_trait]
-impl Validate for NewUser {
-    async fn validate(&self, pool: &Database) -> Result<(), ValidationErrorsWrapper> {
-        let mut errors = ValidationErrors::new();
-
-        if validate_not_empty(&mut errors, "username", &self.username) {
-            validate_unique_username(&mut errors, &self.username, pool).await?;
-        }
-        if validate_not_empty(&mut errors, "email", &self.email) {
-            validate_unique_email(&mut errors, &self.email, pool).await?;
-        }
-        validate_not_empty(&mut errors, "password", &self.password);
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(ValidationErrorsWrapper::ValidationErrors(errors))
-        }
-    }
-}
-
 #[derive(Debug, Deserialize)]
 pub struct LoginUserRequest {
     user: LoginUser,
@@ -197,22 +194,6 @@ pub struct LoginUserRequest {
 pub struct LoginUser {
     username: String,
     password: String,
-}
-
-#[async_trait]
-impl Validate for LoginUser {
-    async fn validate(&self, _: &Database) -> Result<(), ValidationErrorsWrapper> {
-        let mut errors = ValidationErrors::new();
-
-        validate_not_empty(&mut errors, "username", &self.username);
-        validate_not_empty(&mut errors, "password", &self.password);
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(ValidationErrorsWrapper::ValidationErrors(errors))
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -229,33 +210,6 @@ pub struct UpdateUser {
     image: Option<String>,
 }
 
-#[async_trait]
-impl Validate for UpdateUser {
-    async fn validate(&self, pool: &Database) -> Result<(), ValidationErrorsWrapper> {
-        let mut errors = ValidationErrors::new();
-
-        if let Some(username) = self.username.as_ref() {
-            if validate_not_empty(&mut errors, "username", username) {
-                validate_unique_username(&mut errors, username, pool).await?;
-            }
-        }
-        if let Some(email) = self.email.as_ref() {
-            if validate_not_empty(&mut errors, "email", email) {
-                validate_unique_email(&mut errors, email, pool).await?;
-            }
-        }
-        if let Some(password) = self.password.as_ref() {
-            validate_not_empty(&mut errors, "password", password);
-        }
-
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(ValidationErrorsWrapper::ValidationErrors(errors))
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct UserResponse {
     user: User,
@@ -266,4 +220,30 @@ pub struct User {
     username: String,
     email: String,
     token: String,
+}
+
+async fn validate_username_unique(
+    errors: &mut ValidationErrors,
+    pool: &Database,
+    username: &str,
+) -> Result<bool, sqlx::Error> {
+    if db::users::get_by_username(pool, username).await?.is_some() {
+        errors.add("username", "unique");
+        Ok(false)
+    } else {
+        Ok(true)
+    }
+}
+
+async fn validate_email_unique(
+    errors: &mut ValidationErrors,
+    pool: &Database,
+    email: &str,
+) -> Result<bool, sqlx::Error> {
+    if db::users::get_by_email(pool, email).await?.is_some() {
+        errors.add("email", "unique");
+        Ok(false)
+    } else {
+        Ok(true)
+    }
 }

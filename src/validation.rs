@@ -1,35 +1,9 @@
 use std::collections::HashMap;
 
-use axum::async_trait;
 use serde::Serialize;
 
-use crate::{db, Database};
-
-#[async_trait]
-pub trait Validate {
-    async fn validate(&self, pool: &Database) -> Result<(), ValidationErrorsWrapper>;
-}
-
-#[derive(Debug)]
-pub enum ValidationErrorsWrapper {
-    ValidationErrors(ValidationErrors),
-    DatabaseError(sqlx::Error),
-}
-
-impl From<ValidationErrors> for ValidationErrorsWrapper {
-    fn from(value: ValidationErrors) -> Self {
-        ValidationErrorsWrapper::ValidationErrors(value)
-    }
-}
-
-impl From<sqlx::Error> for ValidationErrorsWrapper {
-    fn from(value: sqlx::Error) -> Self {
-        ValidationErrorsWrapper::DatabaseError(value)
-    }
-}
-
-#[derive(Debug, Default, Serialize, Clone, PartialEq)]
-pub struct ValidationErrors(HashMap<&'static str, Vec<&'static str>>);
+#[derive(Debug, Default, Clone, PartialEq, Serialize)]
+pub struct ValidationErrors(pub(crate) HashMap<&'static str, Vec<&'static str>>);
 
 impl ValidationErrors {
     pub fn new() -> Self {
@@ -46,39 +20,21 @@ impl ValidationErrors {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn into_result(self) -> Result<(), ValidationErrors> {
+        if self.is_empty() {
+            Ok(())
+        } else {
+            Err(self)
+        }
+    }
 }
 
 pub fn validate_not_empty(errors: &mut ValidationErrors, field: &'static str, value: &str) -> bool {
     if value.is_empty() {
-        errors.add(field, "can't be blank");
+        errors.add(field, "not_empty");
         false
     } else {
         true
-    }
-}
-
-pub async fn validate_unique_username(
-    errors: &mut ValidationErrors,
-    username: &str,
-    pool: &Database,
-) -> Result<bool, sqlx::Error> {
-    if db::users::get_by_username(pool, username).await?.is_some() {
-        errors.add("username", "has already been taken");
-        Ok(false)
-    } else {
-        Ok(true)
-    }
-}
-
-pub async fn validate_unique_email(
-    errors: &mut ValidationErrors,
-    email: &str,
-    pool: &Database,
-) -> Result<bool, sqlx::Error> {
-    if db::users::get_by_email(pool, email).await?.is_some() {
-        errors.add("email", "has already been taken");
-        Ok(false)
-    } else {
-        Ok(true)
     }
 }

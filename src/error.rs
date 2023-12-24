@@ -1,4 +1,4 @@
-use std::error::Error as StdError;
+use std::{collections::HashMap, error::Error as StdError};
 
 use axum::{
     response::{IntoResponse, Response},
@@ -7,10 +7,7 @@ use axum::{
 use http::StatusCode;
 use serde_json::json;
 
-use crate::{
-    jwt::TokenError,
-    validation::{ValidationErrors, ValidationErrorsWrapper},
-};
+use crate::{jwt::TokenError, validation::ValidationErrors};
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -31,12 +28,32 @@ impl IntoResponse for AppError {
             AppError::ValidationErrors(errors) => (
                 StatusCode::UNPROCESSABLE_ENTITY,
                 Json(json!({
-                    "errors": errors
+                    "errors": validation_errors_to_json(errors)
                 })),
             )
                 .into_response(),
         }
     }
+}
+
+// API tests expect these specific errors messages
+fn validation_errors_to_json(errors: ValidationErrors) -> HashMap<&'static str, Vec<&'static str>> {
+    errors
+        .0
+        .iter()
+        .map(|(field, errs)| {
+            (
+                *field,
+                errs.iter()
+                    .map(|err| match *err {
+                        "not_empty" => "can't be blank",
+                        "unique" => "has already been taken",
+                        _ => err,
+                    })
+                    .collect(),
+            )
+        })
+        .collect()
 }
 
 impl From<TokenError> for AppError {
@@ -60,16 +77,5 @@ impl From<ValidationErrors> for AppError {
 impl From<sqlx::Error> for AppError {
     fn from(error: sqlx::Error) -> Self {
         AppError::InternalServerError(error.into())
-    }
-}
-
-impl From<ValidationErrorsWrapper> for AppError {
-    fn from(error: ValidationErrorsWrapper) -> Self {
-        match error {
-            ValidationErrorsWrapper::ValidationErrors(err) => AppError::ValidationErrors(err),
-            ValidationErrorsWrapper::DatabaseError(err) => {
-                AppError::InternalServerError(err.into())
-            }
-        }
     }
 }
