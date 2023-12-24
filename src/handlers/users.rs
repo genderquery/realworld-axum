@@ -57,11 +57,11 @@ pub async fn login(
     let login_user = payload.user;
 
     let mut errors = ValidationErrors::new();
-    validate_not_empty(&mut errors, "username", &login_user.username);
+    validate_not_empty(&mut errors, "email", &login_user.email);
     validate_not_empty(&mut errors, "password", &login_user.password);
     errors.into_result()?;
 
-    let maybe_user = db::users::get_by_username(&pool, &login_user.username).await?;
+    let maybe_user = db::users::get_by_email(&pool, &login_user.email).await?;
     let user = match maybe_user {
         Some(user) => user,
         None => {
@@ -192,7 +192,7 @@ pub struct LoginUserRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct LoginUser {
-    username: String,
+    email: String,
     password: String,
 }
 

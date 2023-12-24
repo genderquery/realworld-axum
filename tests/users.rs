@@ -96,7 +96,7 @@ async fn test_login(pool: Pool<Postgres>) {
 
     let login_payload = json!({
         "user": {
-            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
             "password": TEST_PASSWORD
         }
     });
@@ -120,7 +120,7 @@ async fn test_login_validation(pool: Pool<Postgres>) {
 
     let payload = json!({
         "user": {
-            "username": "",
+            "email": "",
             "password": ""
         }
     });
@@ -133,7 +133,7 @@ async fn test_login_validation(pool: Pool<Postgres>) {
         response.header(header::CONTENT_TYPE),
         mime::APPLICATION_JSON.as_ref()
     );
-    assert_eq!(body["errors"]["username"][0], "can't be blank");
+    assert_eq!(body["errors"]["email"][0], "can't be blank");
     assert_eq!(body["errors"]["password"][0], "can't be blank");
 }
 
@@ -153,7 +153,7 @@ async fn test_login_invalid_credentials(pool: Pool<Postgres>) {
 
     let payload = json!({
         "user": {
-            "username": TEST_USERNAME,
+            "email": TEST_EMAIL,
             "password": "incorrect"
         }
     });
