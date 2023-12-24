@@ -1,14 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
-
 use axum::{
     extract::FromRef,
     routing::{get, post},
     Router,
 };
+use sqlx::{Pool, Postgres};
 
+mod db;
 mod error;
 pub mod jwt;
 mod password;
@@ -16,7 +13,6 @@ mod users;
 mod validation;
 
 pub fn app(state: AppState) -> Router {
-    // build our application with a single route
     Router::new()
         .route("/api/users", post(users::register))
         .route("/api/users/login", post(users::login))
@@ -27,19 +23,22 @@ pub fn app(state: AppState) -> Router {
         .with_state(state)
 }
 
-pub type MockDb = Arc<RwLock<HashMap<Username, (Username, Email, PasswordHash)>>>;
-pub type Username = String;
-pub type Email = String;
-pub type PasswordHash = String;
+pub type Database = Pool<Postgres>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub jwt: jwt::Config,
-    pub db: MockDb,
+    pub db: Database,
 }
 
 impl FromRef<AppState> for jwt::Config {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.jwt.clone()
+    }
+}
+
+impl FromRef<AppState> for Database {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.db.clone()
     }
 }

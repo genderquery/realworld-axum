@@ -1,4 +1,5 @@
-use conduit::{app, jwt, AppState, MockDb};
+use conduit::{app, jwt, AppState};
+use sqlx::postgres::PgPoolOptions;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -17,9 +18,15 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let db_uri = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = PgPoolOptions::new()
+        .connect(&db_uri)
+        .await
+        .expect("Unable to connect to database");
+
     let state = AppState {
         jwt: jwt::Config::try_from_env().unwrap(),
-        db: MockDb::default(),
+        db: pool,
     };
 
     let app = app(state).layer(TraceLayer::new_for_http());

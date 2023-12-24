@@ -1,30 +1,31 @@
 use std::time::Duration;
 
 use axum_test::TestServer;
-use conduit::{app, jwt, AppState, MockDb};
+use conduit::{app, jwt, AppState};
 use http::{header, StatusCode};
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde_json::{json, Value};
+use sqlx::{Pool, Postgres};
 
 const TEST_USERNAME: &str = "AzureDiamond";
 const TEST_EMAIL: &str = "example@example.com";
 const TEST_PASSWORD: &str = "hunter2";
 
-fn new_test_server() -> TestServer {
+async fn new_test_server(pool: Pool<Postgres>) -> TestServer {
     let app_state = AppState {
         jwt: jwt::Config {
             expiration: Duration::from_secs(3600),
             encoding_key: EncodingKey::from_secret(b"secret"),
             decoding_key: DecodingKey::from_secret(b"secret"),
         },
-        db: MockDb::default(),
+        db: pool,
     };
     TestServer::new(app(app_state)).unwrap()
 }
 
-#[tokio::test]
-async fn test_registration() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_registration(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -47,9 +48,9 @@ async fn test_registration() {
     assert!(body["user"]["token"].is_string());
 }
 
-#[tokio::test]
-async fn test_registration_validation() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_registration_validation(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -72,9 +73,9 @@ async fn test_registration_validation() {
     assert_eq!(body["errors"]["password"][0], "can't be blank");
 }
 
-#[tokio::test]
-async fn test_registration_existing_credentials() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_registration_existing_credentials(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -91,9 +92,9 @@ async fn test_registration_existing_credentials() {
     assert_eq!(response.status_code(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[tokio::test]
-async fn test_login() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_login(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -125,9 +126,9 @@ async fn test_login() {
     assert!(body["user"]["token"].is_string());
 }
 
-#[tokio::test]
-async fn test_login_validation() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_login_validation(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -148,9 +149,9 @@ async fn test_login_validation() {
     assert_eq!(body["errors"]["password"][0], "can't be blank");
 }
 
-#[tokio::test]
-async fn test_login_invalid_credentials() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_login_invalid_credentials(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let paylaod = json!({
         "user": {
@@ -174,9 +175,9 @@ async fn test_login_invalid_credentials() {
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
-async fn test_get_current_user() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_get_current_user(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -209,16 +210,16 @@ async fn test_get_current_user() {
     assert!(body["user"]["token"].is_string());
 }
 
-#[tokio::test]
-async fn test_get_current_user_no_token() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_get_current_user_no_token(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
     let response = server.get("/api/user").await;
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
-#[tokio::test]
-async fn test_update_user() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_update_user(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {
@@ -260,9 +261,9 @@ async fn test_update_user() {
     assert!(body["user"]["token"].is_string());
 }
 
-#[tokio::test]
-async fn test_update_user_no_token() {
-    let server = new_test_server();
+#[sqlx::test]
+async fn test_update_user_no_token(pool: Pool<Postgres>) {
+    let server = new_test_server(pool).await;
 
     let payload = json!({
         "user": {

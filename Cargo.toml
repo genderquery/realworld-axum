@@ -15,6 +15,12 @@ jsonwebtoken = "9.2.0"
 password-hash = { version = "0.5.0", features = ["getrandom", "std"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
+sqlx = { version = "0.7.3", default-features = false, features = [
+    "macros",
+    "migrate",
+    "runtime-tokio",
+    "postgres",
+] }
 thiserror = "1.0.51"
 tokio = { version = "1.35.0", features = ["macros", "rt-multi-thread"] }
 tower = "0.4.13"

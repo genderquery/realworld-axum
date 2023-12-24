@@ -1,11 +1,34 @@
 use std::collections::HashMap;
 
+use axum::async_trait;
 use serde::Serialize;
 
-use crate::AppState;
+use crate::{
+    db::{get_user_by_email, get_user_by_username},
+    Database,
+};
 
+#[async_trait]
 pub trait Validate {
-    fn validate(&self) -> Result<(), ValidationErrors>;
+    async fn validate(&self, pool: &Database) -> Result<(), ValidationErrorsWrapper>;
+}
+
+#[derive(Debug)]
+pub enum ValidationErrorsWrapper {
+    ValidationErrors(ValidationErrors),
+    DatabaseError(sqlx::Error),
+}
+
+impl From<ValidationErrors> for ValidationErrorsWrapper {
+    fn from(value: ValidationErrors) -> Self {
+        ValidationErrorsWrapper::ValidationErrors(value)
+    }
+}
+
+impl From<sqlx::Error> for ValidationErrorsWrapper {
+    fn from(value: sqlx::Error) -> Self {
+        ValidationErrorsWrapper::DatabaseError(value)
+    }
 }
 
 #[derive(Debug, Default, Serialize, Clone, PartialEq)]
@@ -28,29 +51,37 @@ impl ValidationErrors {
     }
 }
 
-pub fn validate_not_empty(errors: &mut ValidationErrors, field: &'static str, value: &str) {
+pub fn validate_not_empty(errors: &mut ValidationErrors, field: &'static str, value: &str) -> bool {
     if value.is_empty() {
         errors.add(field, "can't be blank");
+        false
+    } else {
+        true
     }
 }
 
-pub fn validate_unique_username(state: &AppState, username: &str) -> Result<(), ValidationErrors> {
-    let mut errors = ValidationErrors::new();
-
-    if state.db.read().unwrap().contains_key(username) {
+pub async fn validate_unique_username(
+    errors: &mut ValidationErrors,
+    username: &str,
+    pool: &Database,
+) -> Result<bool, sqlx::Error> {
+    if get_user_by_username(pool, username).await?.is_some() {
         errors.add("username", "has already been taken");
+        Ok(false)
+    } else {
+        Ok(true)
     }
-
-    errors.is_empty().then_some(()).ok_or(errors)
 }
 
-pub fn validate_unique_email(state: &AppState, email: &str) -> Result<(), ValidationErrors> {
-    let mut errors = ValidationErrors::new();
-
-    let db = state.db.read().unwrap();
-    if db.values().any(|(_, e, _)| e == email) {
+pub async fn validate_unique_email(
+    errors: &mut ValidationErrors,
+    email: &str,
+    pool: &Database,
+) -> Result<bool, sqlx::Error> {
+    if get_user_by_email(pool, email).await?.is_some() {
         errors.add("email", "has already been taken");
+        Ok(false)
+    } else {
+        Ok(true)
     }
-
-    errors.is_empty().then_some(()).ok_or(errors)
 }

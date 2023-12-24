@@ -1,42 +1,33 @@
-use axum::{extract::State, Json};
+use axum::{async_trait, extract::State, Json};
 use axum_macros::debug_handler;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
+use sqlx::{Pool, Postgres};
 
 use crate::{
+    db,
     error::AppError,
     jwt::{self, Claims},
     password::{hash_password, verify_password},
     validation::{
         validate_not_empty, validate_unique_email, validate_unique_username, Validate,
-        ValidationErrors,
+        ValidationErrors, ValidationErrorsWrapper,
     },
-    AppState,
+    AppState, Database,
 };
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn register(
-    State(state): State<AppState>,
+    State(pool): State<Pool<Postgres>>,
+    State(jwt): State<jwt::Config>,
     Json(payload): Json<NewUserRequest>,
 ) -> Result<(StatusCode, Json<UserResponse>), AppError> {
-    let user = payload.user;
+    let new_user = payload.user;
+    new_user.validate(&pool).await?;
 
-    user.validate()?;
-    validate_unique_username(&state, &user.username)?;
-    validate_unique_email(&state, &user.email)?;
-
-    let password_hash = hash_password(&user.password)?;
-
-    state.db.write().unwrap().insert(
-        user.username.clone(),
-        (
-            user.username.clone(),
-            user.email.clone(),
-            password_hash.clone(),
-        ),
-    );
-
-    let token = jwt::create_token(&state.jwt, &user.username, &user.email)?;
+    let password_hash = hash_password(&new_user.password)?;
+    let user = db::create_user(&pool, &new_user.username, &new_user.email, &password_hash).await?;
+    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
 
     Ok((
         StatusCode::CREATED,
@@ -50,94 +41,114 @@ pub async fn register(
     ))
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn login(
-    State(state): State<AppState>,
+    State(pool): State<Pool<Postgres>>,
+    State(jwt): State<jwt::Config>,
     Json(payload): Json<LoginUserRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
-    let user = payload.user;
+    let login_user = payload.user;
+    login_user.validate(&pool).await?;
 
-    user.validate()?;
+    let maybe_user = db::get_user_by_username(&pool, &login_user.username).await?;
+    let user = match maybe_user {
+        Some(user) => user,
+        None => {
+            return Err(AppError::Unauthorized);
+        }
+    };
 
-    let (username, email, password_hash) =
-        match state.db.read().unwrap().get(&user.username).cloned() {
-            Some(user) => user,
-            None => return Err(AppError::Unauthorized),
-        };
-
-    if verify_password(&user.password, &password_hash).is_err() {
+    // TODO handle other errors
+    if verify_password(&login_user.password, &user.password_hash).is_err() {
         return Err(AppError::Unauthorized);
     }
 
-    let token = jwt::create_token(&state.jwt, &username, &email)?;
+    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
 
     Ok(Json(UserResponse {
         user: User {
-            username: username.to_owned(),
-            email: email.to_owned(),
+            username: user.username,
+            email: user.email,
             token,
         },
     }))
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn get_current_user(
-    State(state): State<AppState>,
+    State(pool): State<Pool<Postgres>>,
+    State(jwt): State<jwt::Config>,
     claims: Claims,
 ) -> Result<Json<UserResponse>, AppError> {
-    let db = state.db.read().unwrap();
-    let (username, email, _) = match db.get(&claims.username) {
+    // TODO: we should be using user id because the user can change their username
+    let maybe_user = db::get_user_by_username(&pool, &claims.username).await?;
+    let user = match maybe_user {
         Some(user) => user,
-        None => return Err(AppError::Unauthorized),
+        None => {
+            return Err(AppError::Unauthorized);
+        }
     };
 
-    let token = jwt::create_token(&state.jwt, username, email)?;
+    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
 
     Ok(Json(UserResponse {
         user: User {
-            username: username.to_owned(),
-            email: email.to_owned(),
+            username: user.username,
+            email: user.email,
             token,
         },
     }))
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn update_user(
-    State(state): State<AppState>,
+    State(pool): State<Pool<Postgres>>,
+    State(jwt): State<jwt::Config>,
     claims: Claims,
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
     let update_user = payload.user;
+    update_user.validate(&pool).await?;
 
-    update_user.validate()?;
+    let mut user = match db::get_user_by_username(&pool, &claims.username).await? {
+        Some(user) => user,
+        None => {
+            return Err(AppError::Unauthorized);
+        }
+    };
 
-    if let Some(username) = update_user.username.as_ref() {
-        validate_unique_username(&state, username)?;
+    if let Some(username) = update_user.username {
+        user.username = username;
     }
-    if let Some(email) = update_user.email.as_ref() {
-        validate_unique_email(&state, email)?;
+    if let Some(email) = update_user.email {
+        user.email = email;
     }
-
-    let mut db = state.db.write().unwrap();
-    let (username, email, password_hash) = db.get_mut(&claims.username).unwrap();
-
-    if let Some(new_username) = update_user.username.as_ref() {
-        *username = new_username.to_owned();
+    if let Some(password) = update_user.password {
+        user.password_hash = hash_password(&password)?;
     }
-    if let Some(new_email) = update_user.email.as_ref() {
-        *email = new_email.to_owned();
+    if let Some(bio) = update_user.bio {
+        user.bio = Some(bio);
     }
-    if let Some(new_password) = update_user.password.as_ref() {
-        *password_hash = hash_password(new_password)?;
+    if let Some(image) = update_user.image {
+        user.image = Some(image);
     }
 
-    let token = jwt::create_token(&state.jwt, username, email)?;
+    db::update_user(
+        &pool,
+        &user.username,
+        &user.email,
+        &user.password_hash,
+        user.bio.as_deref(),
+        user.image.as_deref(),
+    )
+    .await?;
+
+    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
 
     Ok(Json(UserResponse {
         user: User {
-            username: username.to_owned(),
-            email: email.to_owned(),
+            username: user.username,
+            email: user.email,
             token,
         },
     }))
@@ -155,15 +166,24 @@ pub struct NewUser {
     password: String,
 }
 
+#[async_trait]
 impl Validate for NewUser {
-    fn validate(&self) -> Result<(), ValidationErrors> {
+    async fn validate(&self, pool: &Database) -> Result<(), ValidationErrorsWrapper> {
         let mut errors = ValidationErrors::new();
 
-        validate_not_empty(&mut errors, "username", &self.username);
-        validate_not_empty(&mut errors, "email", &self.email);
+        if validate_not_empty(&mut errors, "username", &self.username) {
+            validate_unique_username(&mut errors, &self.username, pool).await?;
+        }
+        if validate_not_empty(&mut errors, "email", &self.email) {
+            validate_unique_email(&mut errors, &self.email, pool).await?;
+        }
         validate_not_empty(&mut errors, "password", &self.password);
 
-        errors.is_empty().then_some(()).ok_or(errors)
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(ValidationErrorsWrapper::ValidationErrors(errors))
+        }
     }
 }
 
@@ -178,14 +198,19 @@ pub struct LoginUser {
     password: String,
 }
 
+#[async_trait]
 impl Validate for LoginUser {
-    fn validate(&self) -> Result<(), ValidationErrors> {
+    async fn validate(&self, _: &Database) -> Result<(), ValidationErrorsWrapper> {
         let mut errors = ValidationErrors::new();
 
         validate_not_empty(&mut errors, "username", &self.username);
         validate_not_empty(&mut errors, "password", &self.password);
 
-        errors.is_empty().then_some(()).ok_or(errors)
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(ValidationErrorsWrapper::ValidationErrors(errors))
+        }
     }
 }
 
@@ -199,23 +224,34 @@ pub struct UpdateUser {
     username: Option<String>,
     email: Option<String>,
     password: Option<String>,
+    bio: Option<String>,
+    image: Option<String>,
 }
 
+#[async_trait]
 impl Validate for UpdateUser {
-    fn validate(&self) -> Result<(), ValidationErrors> {
+    async fn validate(&self, pool: &Database) -> Result<(), ValidationErrorsWrapper> {
         let mut errors = ValidationErrors::new();
 
         if let Some(username) = self.username.as_ref() {
-            validate_not_empty(&mut errors, "username", username);
+            if validate_not_empty(&mut errors, "username", username) {
+                validate_unique_username(&mut errors, username, pool).await?;
+            }
         }
         if let Some(email) = self.email.as_ref() {
-            validate_not_empty(&mut errors, "email", email);
+            if validate_not_empty(&mut errors, "email", email) {
+                validate_unique_email(&mut errors, email, pool).await?;
+            }
         }
         if let Some(password) = self.password.as_ref() {
             validate_not_empty(&mut errors, "password", password);
         }
 
-        errors.is_empty().then_some(()).ok_or(errors)
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(ValidationErrorsWrapper::ValidationErrors(errors))
+        }
     }
 }
 

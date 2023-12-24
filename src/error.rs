@@ -7,7 +7,10 @@ use axum::{
 use http::StatusCode;
 use serde_json::json;
 
-use crate::{jwt::TokenError, validation::ValidationErrors};
+use crate::{
+    jwt::TokenError,
+    validation::{ValidationErrors, ValidationErrorsWrapper},
+};
 
 #[derive(Debug)]
 #[non_exhaustive]
@@ -51,5 +54,22 @@ impl From<password_hash::Error> for AppError {
 impl From<ValidationErrors> for AppError {
     fn from(error: ValidationErrors) -> Self {
         AppError::ValidationErrors(error)
+    }
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(error: sqlx::Error) -> Self {
+        AppError::InternalServerError(error.into())
+    }
+}
+
+impl From<ValidationErrorsWrapper> for AppError {
+    fn from(error: ValidationErrorsWrapper) -> Self {
+        match error {
+            ValidationErrorsWrapper::ValidationErrors(err) => AppError::ValidationErrors(err),
+            ValidationErrorsWrapper::DatabaseError(err) => {
+                AppError::InternalServerError(err.into())
+            }
+        }
     }
 }
