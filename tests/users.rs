@@ -1,31 +1,19 @@
-use std::time::Duration;
-
-use axum_test::TestServer;
-use conduit::{app, jwt, AppState};
 use http::{header, StatusCode};
-use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde_json::{json, Value};
 use sqlx::{Pool, Postgres};
+
+use crate::common::new_test_server;
+
+#[path = "common.rs"]
+mod common;
 
 const TEST_USERNAME: &str = "AzureDiamond";
 const TEST_EMAIL: &str = "example@example.com";
 const TEST_PASSWORD: &str = "hunter2";
 
-async fn new_test_server(pool: Pool<Postgres>) -> TestServer {
-    let app_state = AppState {
-        jwt: jwt::Config {
-            expiration: Duration::from_secs(3600),
-            encoding_key: EncodingKey::from_secret(b"secret"),
-            decoding_key: DecodingKey::from_secret(b"secret"),
-        },
-        db: pool,
-    };
-    TestServer::new(app(app_state)).unwrap()
-}
-
 #[sqlx::test]
 async fn test_registration(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -50,7 +38,7 @@ async fn test_registration(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_registration_validation(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -75,7 +63,7 @@ async fn test_registration_validation(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_registration_existing_credentials(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -94,7 +82,7 @@ async fn test_registration_existing_credentials(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_login(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -128,7 +116,7 @@ async fn test_login(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_login_validation(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -151,7 +139,7 @@ async fn test_login_validation(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_login_invalid_credentials(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let paylaod = json!({
         "user": {
@@ -177,7 +165,7 @@ async fn test_login_invalid_credentials(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_get_current_user(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -212,14 +200,14 @@ async fn test_get_current_user(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_get_current_user_no_token(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
     let response = server.get("/api/user").await;
     assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 }
 
 #[sqlx::test]
 async fn test_update_user(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
@@ -263,7 +251,7 @@ async fn test_update_user(pool: Pool<Postgres>) {
 
 #[sqlx::test]
 async fn test_update_user_no_token(pool: Pool<Postgres>) {
-    let server = new_test_server(pool).await;
+    let server = new_test_server(pool);
 
     let payload = json!({
         "user": {
