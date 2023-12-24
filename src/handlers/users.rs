@@ -26,7 +26,8 @@ pub async fn register(
     new_user.validate(&pool).await?;
 
     let password_hash = hash_password(&new_user.password)?;
-    let user = db::create_user(&pool, &new_user.username, &new_user.email, &password_hash).await?;
+    let user =
+        db::users::create(&pool, &new_user.username, &new_user.email, &password_hash).await?;
     let token = jwt::create_token(&jwt, &user.username, &user.email)?;
 
     Ok((
@@ -50,7 +51,7 @@ pub async fn login(
     let login_user = payload.user;
     login_user.validate(&pool).await?;
 
-    let maybe_user = db::get_user_by_username(&pool, &login_user.username).await?;
+    let maybe_user = db::users::get_by_username(&pool, &login_user.username).await?;
     let user = match maybe_user {
         Some(user) => user,
         None => {
@@ -81,7 +82,7 @@ pub async fn get_current_user(
     claims: Claims,
 ) -> Result<Json<UserResponse>, AppError> {
     // TODO: we should be using user id because the user can change their username
-    let maybe_user = db::get_user_by_username(&pool, &claims.username).await?;
+    let maybe_user = db::users::get_by_username(&pool, &claims.username).await?;
     let user = match maybe_user {
         Some(user) => user,
         None => {
@@ -110,7 +111,7 @@ pub async fn update_user(
     let update_user = payload.user;
     update_user.validate(&pool).await?;
 
-    let mut user = match db::get_user_by_username(&pool, &claims.username).await? {
+    let mut user = match db::users::get_by_username(&pool, &claims.username).await? {
         Some(user) => user,
         None => {
             return Err(AppError::Unauthorized);
@@ -133,7 +134,7 @@ pub async fn update_user(
         user.image = Some(image);
     }
 
-    db::update_user(
+    db::users::update(
         &pool,
         &user.username,
         &user.email,

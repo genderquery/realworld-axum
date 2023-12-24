@@ -3,10 +3,7 @@ use std::collections::HashMap;
 use axum::async_trait;
 use serde::Serialize;
 
-use crate::{
-    db::{get_user_by_email, get_user_by_username},
-    Database,
-};
+use crate::{db, Database};
 
 #[async_trait]
 pub trait Validate {
@@ -65,7 +62,7 @@ pub async fn validate_unique_username(
     username: &str,
     pool: &Database,
 ) -> Result<bool, sqlx::Error> {
-    if get_user_by_username(pool, username).await?.is_some() {
+    if db::users::get_by_username(pool, username).await?.is_some() {
         errors.add("username", "has already been taken");
         Ok(false)
     } else {
@@ -78,7 +75,7 @@ pub async fn validate_unique_email(
     email: &str,
     pool: &Database,
 ) -> Result<bool, sqlx::Error> {
-    if get_user_by_email(pool, email).await?.is_some() {
+    if db::users::get_by_email(pool, email).await?.is_some() {
         errors.add("email", "has already been taken");
         Ok(false)
     } else {

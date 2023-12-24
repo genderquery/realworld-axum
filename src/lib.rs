@@ -3,13 +3,14 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use handlers::users;
 use sqlx::{Pool, Postgres};
 
 mod db;
 mod error;
+mod handlers;
 pub mod jwt;
 mod password;
-mod users;
 mod validation;
 
 pub fn app(state: AppState) -> Router {
