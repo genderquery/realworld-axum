@@ -64,7 +64,10 @@ impl From<TokenError> for AppError {
 
 impl From<password_hash::Error> for AppError {
     fn from(error: password_hash::Error) -> Self {
-        AppError::InternalServerError(error.into())
+        match error {
+            password_hash::Error::Password => AppError::Unauthorized,
+            _ => AppError::InternalServerError(error.into()),
+        }
     }
 }
 

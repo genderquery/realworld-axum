@@ -69,10 +69,7 @@ pub async fn login(
         }
     };
 
-    // TODO handle other errors
-    if verify_password(&login_user.password, &user.password_hash).is_err() {
-        return Err(AppError::Unauthorized);
-    }
+    verify_password(&login_user.password, &user.password_hash)?;
 
     let token = jwt::create_token(&jwt, &user.username, &user.email)?;
 
