@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     env,
     ops::Add,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -9,13 +8,9 @@ use axum::{
     async_trait,
     extract::{FromRef, FromRequestParts},
     http::{header, request, HeaderMap},
-    response::{IntoResponse, Response},
-    Json,
 };
-use http::StatusCode;
 use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use thiserror::Error;
 
 #[derive(Clone)]
@@ -92,6 +87,14 @@ pub struct Claims {
     pub email: String,
 }
 
+#[derive(Debug, Error)]
+pub enum TokenError {
+    #[error(transparent)]
+    Token(#[from] jsonwebtoken::errors::Error),
+    #[error("Invalid or missing Authorization header")]
+    InvalidHeader,
+}
+
 #[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
@@ -120,29 +123,5 @@ fn extract_token_from_headers(headers: &HeaderMap) -> Option<&str> {
         Some(token.trim())
     } else {
         None
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum TokenError {
-    #[error(transparent)]
-    Token(#[from] jsonwebtoken::errors::Error),
-    #[error("Invalid or missing Authorization header")]
-    InvalidHeader,
-}
-
-impl IntoResponse for TokenError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            TokenError::InvalidHeader => (
-                StatusCode::UNAUTHORIZED,
-                Cow::from(TokenError::InvalidHeader.to_string()),
-            ),
-            TokenError::Token(error) => (StatusCode::UNAUTHORIZED, Cow::from(error.to_string())),
-        };
-        let body = Json(json!({
-            "error": error_message,
-        }));
-        (status, body).into_response()
     }
 }

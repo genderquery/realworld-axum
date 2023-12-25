@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error as StdError};
+use std::{borrow::Cow, collections::HashMap, error::Error as StdError};
 
 use axum::{
     response::{IntoResponse, Response},
@@ -54,6 +54,22 @@ fn validation_errors_to_json(errors: ValidationErrors) -> HashMap<&'static str, 
             )
         })
         .collect()
+}
+
+impl IntoResponse for TokenError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            TokenError::InvalidHeader => (
+                StatusCode::UNAUTHORIZED,
+                Cow::from(TokenError::InvalidHeader.to_string()),
+            ),
+            TokenError::Token(error) => (StatusCode::UNAUTHORIZED, Cow::from(error.to_string())),
+        };
+        let body = Json(json!({
+            "error": error_message,
+        }));
+        (status, body).into_response()
+    }
 }
 
 impl From<TokenError> for AppError {
