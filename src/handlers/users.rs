@@ -34,7 +34,7 @@ pub async fn register(
     let password_hash = hash_password(&new_user.password)?;
     let user =
         db::users::create(&pool, &new_user.username, &new_user.email, &password_hash).await?;
-    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
+    let token = jwt::create_token(&jwt, user.id, &user.username, &user.email)?;
 
     Ok((
         StatusCode::CREATED,
@@ -71,7 +71,7 @@ pub async fn login(
 
     verify_password(&login_user.password, &user.password_hash)?;
 
-    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
+    let token = jwt::create_token(&jwt, user.id, &user.username, &user.email)?;
 
     Ok(Json(UserResponse {
         user: User {
@@ -88,8 +88,7 @@ pub async fn get_current_user(
     State(jwt): State<jwt::Config>,
     claims: Claims,
 ) -> Result<Json<UserResponse>, AppError> {
-    // TODO: we should be using user id because the user can change their username
-    let maybe_user = db::users::get_by_username(&pool, &claims.username).await?;
+    let maybe_user = db::users::get_by_id(&pool, claims.user_id).await?;
     let user = match maybe_user {
         Some(user) => user,
         None => {
@@ -97,7 +96,7 @@ pub async fn get_current_user(
         }
     };
 
-    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
+    let token = jwt::create_token(&jwt, user.id, &user.username, &user.email)?;
 
     Ok(Json(UserResponse {
         user: User {
@@ -117,7 +116,7 @@ pub async fn update_user(
 ) -> Result<Json<UserResponse>, AppError> {
     let update_user = payload.user;
 
-    let mut user = match db::users::get_by_username(&pool, &claims.username).await? {
+    let mut user = match db::users::get_by_id(&pool, claims.user_id).await? {
         Some(user) => user,
         None => {
             return Err(AppError::Unauthorized);
@@ -159,7 +158,7 @@ pub async fn update_user(
     )
     .await?;
 
-    let token = jwt::create_token(&jwt, &user.username, &user.email)?;
+    let token = jwt::create_token(&jwt, user.id, &user.username, &user.email)?;
 
     Ok(Json(UserResponse {
         user: User {

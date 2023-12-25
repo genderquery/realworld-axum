@@ -56,7 +56,12 @@ impl Config {
     }
 }
 
-pub fn create_token(config: &Config, username: &str, email: &str) -> Result<String, TokenError> {
+pub fn create_token(
+    config: &Config,
+    user_id: i32,
+    username: &str,
+    email: &str,
+) -> Result<String, TokenError> {
     let exp: u64 = SystemTime::now()
         .add(config.expiration)
         .duration_since(UNIX_EPOCH)
@@ -65,6 +70,7 @@ pub fn create_token(config: &Config, username: &str, email: &str) -> Result<Stri
 
     let claims = Claims {
         exp,
+        user_id,
         username: username.to_owned(),
         email: email.to_owned(),
     };
@@ -81,6 +87,7 @@ pub fn create_token(config: &Config, username: &str, email: &str) -> Result<Stri
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     exp: u64,
+    pub user_id: i32,
     pub username: String,
     pub email: String,
 }

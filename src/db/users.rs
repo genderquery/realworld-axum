@@ -2,12 +2,18 @@ use sqlx::{Pool, Postgres};
 
 #[derive(Debug)]
 pub struct User {
-    pub id: i64,
+    pub id: i32,
     pub username: String,
     pub email: String,
     pub password_hash: String,
     pub bio: Option<String>,
     pub image: Option<String>,
+}
+
+pub async fn get_by_id(pool: &Pool<Postgres>, id: i32) -> Result<Option<User>, sqlx::Error> {
+    sqlx::query_as!(User, "select * from users where id = $1", id)
+        .fetch_optional(pool)
+        .await
 }
 
 pub async fn get_by_username(
