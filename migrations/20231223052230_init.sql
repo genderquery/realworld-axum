@@ -6,3 +6,9 @@ create table users (
     bio             text,
     image           text
 );
+
+create table follows (
+    user_id         integer not null references users on delete cascade,
+    follows_user    integer not null references users on delete cascade,
+    primary key(user_id, follows_user)
+);

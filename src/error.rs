@@ -12,6 +12,7 @@ use crate::{jwt::TokenError, validation::ValidationErrors};
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum AppError {
+    NotFound,
     InternalServerError(Box<dyn StdError>),
     Unauthorized,
     ValidationErrors(ValidationErrors),
@@ -20,6 +21,7 @@ pub enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         match self {
+            AppError::NotFound => StatusCode::NOT_FOUND.into_response(),
             AppError::InternalServerError(error) => {
                 tracing::error!("{error}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()

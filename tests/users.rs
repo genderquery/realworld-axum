@@ -2,14 +2,10 @@ use http::{header, StatusCode};
 use serde_json::{json, Value};
 use sqlx::{Pool, Postgres};
 
-use crate::common::new_test_server;
+use crate::common::{new_test_server, TEST_EMAIL, TEST_PASSWORD, TEST_USERNAME};
 
 #[path = "common.rs"]
 mod common;
-
-const TEST_USERNAME: &str = "AzureDiamond";
-const TEST_EMAIL: &str = "example@example.com";
-const TEST_PASSWORD: &str = "hunter2";
 
 #[sqlx::test]
 async fn test_registration(pool: Pool<Postgres>) {

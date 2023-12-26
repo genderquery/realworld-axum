@@ -3,10 +3,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use handlers::users;
+use handlers::{profiles, users};
 use sqlx::{Pool, Postgres};
 
-mod db;
+pub mod db;
 mod error;
 mod handlers;
 pub mod jwt;
@@ -20,6 +20,11 @@ pub fn app(state: AppState) -> Router {
         .route(
             "/api/user",
             get(users::get_current_user).put(users::update_user),
+        )
+        .route("/api/profiles/:username", get(profiles::get_profile))
+        .route(
+            "/api/profiles/:username/follow",
+            post(profiles::follow_user).delete(profiles::unfollow_user),
         )
         .with_state(state)
 }
