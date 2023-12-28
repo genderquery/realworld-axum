@@ -1,2 +1,4 @@
 # Build artifacts
 /target
+/.vscode
+/.env
