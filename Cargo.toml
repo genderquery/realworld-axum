@@ -9,6 +9,7 @@ edition = "2021"
 async-trait = "0.1.75"
 axum = { version = "0.7.2", features = ["tracing"] }
 axum-macros = "0.4.0"
+mockall = "0.12.1"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 tokio = { version = "1.35.0", features = ["macros", "rt-multi-thread"] }
@@ -24,3 +25,4 @@ cargo-husky = { version = "1.5.0", features = [
     "run-cargo-fmt",
 ] }
 http-body-util = "0.1.0"
+mime = "0.3.17"
