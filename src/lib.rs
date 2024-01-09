@@ -10,6 +10,7 @@ pub mod error;
 mod handlers;
 mod jwt;
 mod repos;
+mod validation;
 
 #[derive(FromRef, Clone)]
 pub struct AppState {
