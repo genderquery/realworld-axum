@@ -2,11 +2,6 @@ use conduit::{app, AppState};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-#[derive(Default, Clone)]
-struct ProductionAppState {}
-
-impl AppState for ProductionAppState {}
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::registry()
@@ -20,7 +15,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = ProductionAppState::default();
+    let state = AppState { jwt: todo!() };
     let app = app(state).layer(TraceLayer::new_for_http());
 
     // run our app with hyper, listening globally on port 3000

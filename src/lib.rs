@@ -2,16 +2,22 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use axum_macros::FromRef;
 use handlers::{articles, comments, favorites, profiles, tags, users};
+use jwt::JwtState;
 
 pub mod error;
 mod handlers;
+mod jwt;
 mod repos;
 
-pub trait AppState: Clone + Send + Sync + 'static {}
+#[derive(FromRef, Clone)]
+pub struct AppState {
+    pub jwt: JwtState,
+}
 
 #[rustfmt::skip]
-pub fn app<A: AppState>(state: A) -> Router {
+pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/api/user",
             get(users::current_user).
@@ -76,8 +82,6 @@ mod tests {
     #[derive(Default, Clone)]
     struct MockAppState {}
 
-    impl AppState for MockAppState {}
-
     trait RequestUtils {
         fn json(self, value: &serde_json::Value) -> Result<Request<Body>, http::Error>;
     }
@@ -107,9 +111,15 @@ mod tests {
         }
     }
 
+    fn test_state() -> AppState {
+        AppState {
+            jwt: JwtState::from_secret(b"secret"),
+        }
+    }
+
     #[tokio::test]
     async fn test_user_registration() {
-        let state = MockAppState::default();
+        let state = test_state();
         let app = app(state);
 
         let response = app

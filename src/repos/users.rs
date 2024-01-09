@@ -6,9 +6,9 @@ use super::error::RepoError;
 #[async_trait]
 #[automock]
 pub trait UsersRepo {
-    async fn get_user_by_id(&self, id: i64) -> Result<User, RepoError>;
-    async fn get_user_by_username(&self, username: String) -> Result<User, RepoError>;
-    async fn get_user_by_email(&self, email: String) -> Result<User, RepoError>;
+    async fn get_user_by_id(&self, id: i64) -> Result<Option<User>, RepoError>;
+    async fn get_user_by_username(&self, username: String) -> Result<Option<User>, RepoError>;
+    async fn get_user_by_email(&self, email: String) -> Result<Option<User>, RepoError>;
     async fn create_user(&self, user: CreateUser) -> Result<User, RepoError>;
     async fn update_user(&self, user: UpdateUser) -> Result<User, RepoError>;
 }

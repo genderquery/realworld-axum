@@ -6,6 +6,9 @@ use crate::error::AppError;
 
 #[debug_handler]
 pub async fn register(Json(payload): Json<NewUserRequest>) -> Result<Json<UserResponse>, AppError> {
+    // TODO: validate payload
+    // TODO: check if username/email exists
+    // TODO: generate token
     todo!()
 }
 
