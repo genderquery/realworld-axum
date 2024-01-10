@@ -2,19 +2,18 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
-use axum_macros::FromRef;
 use handlers::{articles, comments, favorites, profiles, tags, users};
-use jwt::JwtState;
+use jwt::Jwt;
 
 pub mod error;
 mod handlers;
-mod jwt;
+pub mod jwt;
 mod repos;
 mod validation;
 
-#[derive(FromRef, Clone)]
+#[derive(Clone)]
 pub struct AppState {
-    pub jwt: JwtState,
+    pub jwt: Jwt,
 }
 
 #[rustfmt::skip]
@@ -75,6 +74,7 @@ mod tests {
         response::Response,
     };
     use http_body_util::BodyExt;
+    use jsonwebtoken::{DecodingKey, EncodingKey};
     use serde_json::json;
     use tower::ServiceExt;
 
@@ -112,16 +112,19 @@ mod tests {
         }
     }
 
-    fn test_state() -> AppState {
+    fn test_app_state() -> AppState {
         AppState {
-            jwt: JwtState::from_secret(b"secret"),
+            jwt: Jwt::new(jwt::Config {
+                encoding_key: EncodingKey::from_secret(b"secret"),
+                decoding_key: DecodingKey::from_secret(b"secret"),
+                duration_secs: 15 * 60,
+            }),
         }
     }
 
     #[tokio::test]
     async fn test_user_registration() {
-        let state = test_state();
-        let app = app(state);
+        let app = app(test_app_state());
 
         let response = app
             .oneshot(

@@ -3,34 +3,47 @@ use axum::{
     extract::{FromRef, FromRequestParts},
     http::{header, request, StatusCode},
 };
-use axum_macros::FromRef;
-use jsonwebtoken::{decode, DecodingKey, EncodingKey, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, TokenData, Validation};
 use serde::{Deserialize, Serialize};
+
+#[derive(Clone)]
+pub struct Config {
+    pub encoding_key: EncodingKey,
+    pub decoding_key: DecodingKey,
+    pub duration_secs: u64,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    exp: usize,
+    exp: u64,
 }
 
-#[derive(FromRef, Clone)]
-pub struct JwtState {
-    encoding_key: EncodingKey,
-    decoding_key: DecodingKey,
+#[derive(Clone)]
+pub struct Jwt {
+    config: Config,
 }
 
-impl JwtState {
-    pub fn from_secret(secret: &[u8]) -> Self {
-        Self {
-            encoding_key: EncodingKey::from_secret(secret),
-            decoding_key: DecodingKey::from_secret(secret),
-        }
+impl Jwt {
+    pub fn new(config: Config) -> Self {
+        Jwt { config }
+    }
+
+    pub fn encode(&self) -> Result<String, jsonwebtoken::errors::Error> {
+        let now = jsonwebtoken::get_current_timestamp();
+        let exp = self.config.duration_secs.saturating_add(now);
+        let claims = Claims { exp };
+        jsonwebtoken::encode(&Header::default(), &claims, &self.config.encoding_key)
+    }
+
+    pub fn decode(&self, token: &str) -> Result<TokenData<Claims>, jsonwebtoken::errors::Error> {
+        jsonwebtoken::decode::<Claims>(token, &self.config.decoding_key, &Validation::default())
     }
 }
 
 #[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
-    JwtState: FromRef<S>,
+    Jwt: FromRef<S>,
     S: Send + Sync,
 {
     type Rejection = StatusCode;
@@ -39,10 +52,9 @@ where
         parts: &mut request::Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        let jwt = JwtState::from_ref(state);
+        let jwt = Jwt::from_ref(state);
         let token = extract_token(parts).ok_or(StatusCode::UNAUTHORIZED)?;
-        let token = decode::<Claims>(token, &jwt.decoding_key, &Validation::default())
-            .map_err(|_| StatusCode::UNAUTHORIZED)?;
+        let token = jwt.decode(token).map_err(|_| StatusCode::UNAUTHORIZED)?;
         Ok(token.claims)
     }
 }

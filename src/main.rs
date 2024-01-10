@@ -1,4 +1,11 @@
-use conduit::{app, AppState};
+use std::env;
+
+use conduit::{
+    app,
+    jwt::{self, Jwt},
+    AppState,
+};
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -15,7 +22,15 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = AppState { jwt: todo!() };
+    let secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+
+    let state = AppState {
+        jwt: Jwt::new(jwt::Config {
+            encoding_key: EncodingKey::from_secret(secret.as_bytes()),
+            decoding_key: DecodingKey::from_secret(secret.as_bytes()),
+            duration_secs: 15 * 60,
+        }),
+    };
     let app = app(state).layer(TraceLayer::new_for_http());
 
     // run our app with hyper, listening globally on port 3000

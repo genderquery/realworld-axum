@@ -2,7 +2,7 @@ use axum::Json;
 use axum_macros::debug_handler;
 use serde::{Deserialize, Serialize};
 
-use crate::error::AppError;
+use crate::{error::AppError, jwt::Claims};
 
 #[debug_handler]
 pub async fn register(Json(payload): Json<NewUserRequest>) -> Result<Json<UserResponse>, AppError> {
