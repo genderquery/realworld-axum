@@ -2,11 +2,28 @@ use axum::Json;
 use axum_macros::debug_handler;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::AppError, jwt::Claims};
+use crate::{
+    error::AppError,
+    jwt::Claims,
+    validation::{validate_not_empty, ValidationErrors},
+};
 
 #[debug_handler]
 pub async fn register(Json(payload): Json<NewUserRequest>) -> Result<Json<UserResponse>, AppError> {
-    // TODO: validate payload
+    let NewUserRequest {
+        user: NewUser {
+            username,
+            email,
+            password,
+        },
+    } = payload;
+
+    let mut errors = ValidationErrors::new();
+    validate_not_empty(&mut errors, "username", &username);
+    validate_not_empty(&mut errors, "email", &email);
+    validate_not_empty(&mut errors, "password", &password);
+    errors.into_result()?;
+
     // TODO: check if username/email exists
     // TODO: generate token
     todo!()
