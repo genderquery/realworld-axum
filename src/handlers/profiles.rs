@@ -1,20 +1,34 @@
-use axum::{debug_handler, extract::Path, Json};
+use axum::{
+    debug_handler,
+    extract::{Path, State},
+    Json,
+};
 use serde::Serialize;
+use sqlx::PgPool;
 
 use crate::error::AppError;
 
 #[debug_handler]
-pub async fn get_profile(Path(username): Path<String>) -> Result<Json<ProfileResponse>, AppError> {
+pub async fn get_profile(
+    State(pool): State<PgPool>,
+    Path(username): Path<String>,
+) -> Result<Json<ProfileResponse>, AppError> {
     todo!()
 }
 
 #[debug_handler]
-pub async fn follow(Path(username): Path<String>) -> Result<Json<ProfileResponse>, AppError> {
+pub async fn follow(
+    State(pool): State<PgPool>,
+    Path(username): Path<String>,
+) -> Result<Json<ProfileResponse>, AppError> {
     todo!()
 }
 
 #[debug_handler]
-pub async fn unfollow(Path(username): Path<String>) -> Result<Json<ProfileResponse>, AppError> {
+pub async fn unfollow(
+    State(pool): State<PgPool>,
+    Path(username): Path<String>,
+) -> Result<Json<ProfileResponse>, AppError> {
     todo!()
 }
 

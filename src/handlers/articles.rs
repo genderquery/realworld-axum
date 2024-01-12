@@ -1,29 +1,40 @@
-use axum::{debug_handler, extract::Path, Json};
+use axum::{
+    debug_handler,
+    extract::{Path, State},
+    Json,
+};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 use crate::error::AppError;
 
 use super::profiles::Profile;
 
 #[debug_handler]
-pub async fn get_articles() -> Result<Json<MultipleArticlesResponse>, AppError> {
+pub async fn get_articles(
+    State(pool): State<PgPool>,
+) -> Result<Json<MultipleArticlesResponse>, AppError> {
     todo!()
 }
 
 #[debug_handler]
 pub async fn create_article(
+    State(pool): State<PgPool>,
     Json(payload): Json<NewArticleRequest>,
 ) -> Result<Json<SingleArticleResponse>, AppError> {
     todo!()
 }
 
 #[debug_handler]
-pub async fn get_feed() -> Result<Json<MultipleArticlesResponse>, AppError> {
+pub async fn get_feed(
+    State(pool): State<PgPool>,
+) -> Result<Json<MultipleArticlesResponse>, AppError> {
     todo!()
 }
 
 #[debug_handler]
 pub async fn get_article(
+    State(pool): State<PgPool>,
     Path(slug): Path<String>,
 ) -> Result<Json<SingleArticleResponse>, AppError> {
     todo!()
@@ -31,6 +42,7 @@ pub async fn get_article(
 
 #[debug_handler]
 pub async fn update_article(
+    State(pool): State<PgPool>,
     Path(slug): Path<String>,
     Json(payload): Json<UpdateArticleRequest>,
 ) -> Result<Json<SingleArticleResponse>, AppError> {

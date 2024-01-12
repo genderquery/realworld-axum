@@ -1,5 +1,10 @@
-use axum::{debug_handler, extract::Path, Json};
+use axum::{
+    debug_handler,
+    extract::{Path, State},
+    Json,
+};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 use crate::error::AppError;
 
@@ -7,6 +12,7 @@ use super::profiles::Profile;
 
 #[debug_handler]
 pub async fn get_comments(
+    State(pool): State<PgPool>,
     Path(slug): Path<String>,
 ) -> Result<Json<MultipleCommentsResponse>, AppError> {
     todo!()
@@ -14,13 +20,17 @@ pub async fn get_comments(
 
 #[debug_handler]
 pub async fn create_comment(
+    State(pool): State<PgPool>,
     Path(slug): Path<String>,
 ) -> Result<Json<SingleCommentResponse>, AppError> {
     todo!()
 }
 
 #[debug_handler]
-pub async fn delete_comment(Path((slug, id)): Path<(String, u32)>) -> Result<(), AppError> {
+pub async fn delete_comment(
+    State(pool): State<PgPool>,
+    Path((slug, id)): Path<(String, u32)>,
+) -> Result<(), AppError> {
     todo!()
 }
 

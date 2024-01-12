@@ -1,16 +1,21 @@
 use axum::{
+    extract::FromRef,
     routing::{delete, get, post},
     Router,
 };
 use handlers::{articles, comments, favorites, profiles, tags, users};
+use sqlx::PgPool;
 
 mod error;
 mod handlers;
 
-pub struct AppState {}
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    pub pool: PgPool,
+}
 
 #[rustfmt::skip]
-pub fn app() -> Router {
+pub fn app(state: AppState) -> Router {
     Router::new()
         .route("/api/user",
             get(users::current_user).
@@ -55,4 +60,5 @@ pub fn app() -> Router {
         .route("/api/tags",
             get(tags::get_tags)
         )
+        .with_state(state)
 }

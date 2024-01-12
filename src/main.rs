@@ -1,4 +1,7 @@
-use conduit::app;
+use std::env;
+
+use conduit::{app, AppState};
+use sqlx::PgPool;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -15,7 +18,10 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app = app().layer(TraceLayer::new_for_http());
+    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = PgPool::connect(&db_url).await.unwrap();
+    let state = AppState { pool };
+    let app = app(state).layer(TraceLayer::new_for_http());
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
