@@ -1,6 +1,6 @@
 use axum::{
     debug_handler,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,7 @@ use super::profiles::Profile;
 #[debug_handler]
 pub async fn get_articles(
     State(pool): State<PgPool>,
+    Query(query): Query<ArticlesQuery>,
 ) -> Result<Json<MultipleArticlesResponse>, AppError> {
     todo!()
 }
@@ -28,6 +29,7 @@ pub async fn create_article(
 #[debug_handler]
 pub async fn get_feed(
     State(pool): State<PgPool>,
+    Query(query): Query<ArticlesFeedQuery>,
 ) -> Result<Json<MultipleArticlesResponse>, AppError> {
     todo!()
 }
@@ -52,6 +54,23 @@ pub async fn update_article(
 #[debug_handler]
 pub async fn delete_article(Path(slug): Path<String>) -> Result<(), AppError> {
     todo!()
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticlesQuery {
+    tag: Option<String>,
+    author: Option<String>,
+    favorited: Option<String>,
+    offset: Option<u64>,
+    limit: Option<u64>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArticlesFeedQuery {
+    offset: Option<u64>,
+    limit: Option<u64>,
 }
 
 #[derive(Deserialize)]
