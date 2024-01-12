@@ -6,53 +6,62 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use crate::error::AppError;
+use crate::{error::AppError, jwt::Claims, AppState};
 
 use super::profiles::Profile;
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn get_articles(
     State(pool): State<PgPool>,
+    maybe_claims: Option<Claims>,
     Query(query): Query<ArticlesQuery>,
 ) -> Result<Json<MultipleArticlesResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn create_article(
     State(pool): State<PgPool>,
+    claim: Claims,
     Json(payload): Json<NewArticleRequest>,
 ) -> Result<Json<SingleArticleResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn get_feed(
     State(pool): State<PgPool>,
+    claim: Claims,
     Query(query): Query<ArticlesFeedQuery>,
 ) -> Result<Json<MultipleArticlesResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn get_article(
     State(pool): State<PgPool>,
+    maybe_claims: Option<Claims>,
     Path(slug): Path<String>,
 ) -> Result<Json<SingleArticleResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn update_article(
     State(pool): State<PgPool>,
+    claim: Claims,
     Path(slug): Path<String>,
     Json(payload): Json<UpdateArticleRequest>,
 ) -> Result<Json<SingleArticleResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
-pub async fn delete_article(Path(slug): Path<String>) -> Result<(), AppError> {
+#[debug_handler(state = AppState)]
+pub async fn delete_article(
+    State(pool): State<PgPool>,
+    claim: Claims,
+    Path(slug): Path<String>,
+) -> Result<(), AppError> {
     todo!()
 }
 

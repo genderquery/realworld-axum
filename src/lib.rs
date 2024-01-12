@@ -4,14 +4,17 @@ use axum::{
     Router,
 };
 use handlers::{articles, comments, favorites, profiles, tags, users};
+use jwt::Jwt;
 use sqlx::PgPool;
 
 mod error;
 mod handlers;
+pub mod jwt;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
     pub pool: PgPool,
+    pub jwt: Jwt,
 }
 
 #[rustfmt::skip]

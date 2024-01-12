@@ -2,9 +2,9 @@ use axum::{debug_handler, extract::State, Json};
 use serde::Serialize;
 use sqlx::PgPool;
 
-use crate::error::AppError;
+use crate::{error::AppError, AppState};
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn get_tags(State(pool): State<PgPool>) -> Result<Json<TagsResponse>, AppError> {
     todo!()
 }

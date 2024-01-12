@@ -6,27 +6,30 @@ use axum::{
 use serde::Serialize;
 use sqlx::PgPool;
 
-use crate::error::AppError;
+use crate::{error::AppError, jwt::Claims, AppState};
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn get_profile(
     State(pool): State<PgPool>,
+    maybe_claims: Option<Claims>,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn follow(
     State(pool): State<PgPool>,
+    claims: Claims,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn unfollow(
     State(pool): State<PgPool>,
+    claims: Claims,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileResponse>, AppError> {
     todo!()

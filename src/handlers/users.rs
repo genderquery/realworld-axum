@@ -2,9 +2,9 @@ use axum::{debug_handler, extract::State, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use crate::error::AppError;
+use crate::{error::AppError, jwt::Claims, AppState};
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn register(
     State(pool): State<PgPool>,
     Json(payload): Json<NewUserRequest>,
@@ -12,7 +12,7 @@ pub async fn register(
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn login(
     State(pool): State<PgPool>,
     Json(payload): Json<LoginUserRequest>,
@@ -20,14 +20,18 @@ pub async fn login(
     todo!()
 }
 
-#[debug_handler]
-pub async fn current_user(State(pool): State<PgPool>) -> Result<Json<UserResponse>, AppError> {
+#[debug_handler(state = AppState)]
+pub async fn current_user(
+    State(pool): State<PgPool>,
+    claims: Claims,
+) -> Result<Json<UserResponse>, AppError> {
     todo!()
 }
 
-#[debug_handler]
+#[debug_handler(state = AppState)]
 pub async fn update(
     State(pool): State<PgPool>,
+    claims: Claims,
     Json(payload): Json<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>, AppError> {
     todo!()
