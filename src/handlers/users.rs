@@ -28,7 +28,12 @@ pub async fn register(
     let password_hash = hash_password(&password)?;
 
     let user_id = sqlx::query_scalar!(
-        r#"insert into users (email, username, password_hash) values ($1, $2, $3) returning id"#,
+        r#"
+            insert into users
+            (email, username, password_hash)
+            values ($1, $2, $3)
+            returning id
+        "#,
         email,
         username,
         password_hash
@@ -62,7 +67,11 @@ pub async fn login(
     // TODO: validation
 
     let user = sqlx::query!(
-        r#"select id, email, username, password_hash, bio, image from users where email = $1"#,
+        r#"
+            select id, email, username, password_hash, bio, image
+            from users
+            where email = $1
+        "#,
         email
     )
     .fetch_optional(&pool)
@@ -94,7 +103,11 @@ pub async fn current_user(
     claims: Claims,
 ) -> Result<Json<UserResponse>, AppError> {
     let user = sqlx::query!(
-        r#"select id, email, username, bio, image from users where id = $1"#,
+        r#"
+            select id, email, username, bio, image
+            from users
+            where id = $1
+        "#,
         claims.user_id
     )
     .fetch_optional(&pool)
