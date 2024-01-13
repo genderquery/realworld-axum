@@ -10,6 +10,7 @@ use sqlx::PgPool;
 mod error;
 mod handlers;
 pub mod jwt;
+mod password;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {

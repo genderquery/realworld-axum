@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     exp: u64,
+    pub user_id: i32,
 }
 
 #[derive(Clone)]
@@ -67,10 +68,10 @@ impl Jwt {
         }
     }
 
-    pub fn encode(&self) -> Result<String, jsonwebtoken::errors::Error> {
+    pub fn encode(&self, user_id: i32) -> Result<String, jsonwebtoken::errors::Error> {
         let now = jsonwebtoken::get_current_timestamp();
         let exp = self.config.duration_secs.saturating_add(now);
-        let claims = Claims { exp };
+        let claims = Claims { exp, user_id };
         jsonwebtoken::encode(&Header::default(), &claims, &self.config.encoding_key)
     }
 
