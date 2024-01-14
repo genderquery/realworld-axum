@@ -28,12 +28,6 @@ impl From<password_hash::Error> for AppError {
     }
 }
 
-impl From<sqlx::Error> for AppError {
-    fn from(value: sqlx::Error) -> Self {
-        AppError::InternalServerError(value.into())
-    }
-}
-
 impl From<jsonwebtoken::errors::Error> for AppError {
     fn from(value: jsonwebtoken::errors::Error) -> Self {
         AppError::InternalServerError(value.into())

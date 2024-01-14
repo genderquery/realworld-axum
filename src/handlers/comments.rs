@@ -4,9 +4,8 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
-use crate::{error::AppError, jwt::Claims, AppState};
+use crate::{error::AppError, jwt::Claims, AppState, PgPool};
 
 use super::profiles::Profile;
 

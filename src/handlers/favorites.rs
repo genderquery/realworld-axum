@@ -3,9 +3,8 @@ use axum::{
     extract::{Path, State},
     Json,
 };
-use sqlx::PgPool;
 
-use crate::{error::AppError, jwt::Claims, AppState};
+use crate::{error::AppError, jwt::Claims, AppState, PgPool};
 
 use super::articles::SingleArticleResponse;
 

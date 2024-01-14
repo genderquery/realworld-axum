@@ -3,9 +3,12 @@ use std::env;
 use conduit::{
     app,
     jwt::{self, Jwt},
-    AppState,
+    AppState, PgPool,
 };
-use sqlx::PgPool;
+use diesel::{
+    r2d2::{ConnectionManager, Pool},
+    PgConnection,
+};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -22,9 +25,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = PgPool::connect(&db_url).await.unwrap();
-
+    let pool = get_connection_pool();
     let jwt = Jwt::new(jwt::Config::try_from_env().unwrap());
 
     let state = AppState { pool, jwt };
@@ -36,4 +37,13 @@ async fn main() {
     tracing::info!("Listening on at http://{}", listener.local_addr().unwrap());
 
     axum::serve(listener, app).await.unwrap();
+}
+
+fn get_connection_pool() -> PgPool {
+    let url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let manager = ConnectionManager::<PgConnection>::new(url);
+    Pool::builder()
+        .test_on_check_out(true)
+        .build(manager)
+        .expect("Could not build connection pool")
 }

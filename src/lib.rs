@@ -3,14 +3,19 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use diesel::{
+    r2d2::{ConnectionManager, Pool},
+    PgConnection,
+};
 use handlers::{articles, comments, favorites, profiles, tags, users};
 use jwt::Jwt;
-use sqlx::PgPool;
 
 mod error;
 mod handlers;
 pub mod jwt;
 mod password;
+
+pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
