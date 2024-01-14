@@ -1,13 +1,14 @@
-create extension if not exists citext;
-
 create table users (
     id              serial primary key,
-    email           citext not null unique,
-    username        citext not null unique,
+    email           text not null,
+    username        text not null,
     password_hash   text not null,
     bio             text not null,
     image           text not null
 );
+
+create unique index users_email_key on users (lower(email));
+create unique index users_username_key on users (lower(username));
 
 create table follows (
     follower        integer not null references users on delete cascade,
@@ -18,7 +19,7 @@ create table follows (
 
 create table articles (
     id              serial primary key,
-    slug            citext not null unique,
+    slug            text not null,
     title           text not null,
     description     text not null,
     body            text not null,
@@ -27,10 +28,14 @@ create table articles (
     author_id       integer not null references users on delete cascade
 );
 
+create unique index articles_slug_key on articles (lower(slug));
+
 create table tags (
     id              serial primary key,
-    tag             citext not null unique
+    tag             text not null
 );
+
+create unique index tags_tag_key on tags (lower(tag));
 
 create table article_tags (
     article_id      integer not null references articles on delete cascade,
