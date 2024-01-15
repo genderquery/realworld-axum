@@ -3,9 +3,10 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+use diesel::QueryDsl;
 use serde::Serialize;
 
-use crate::{error::AppError, jwt::Claims, AppState, PgPool};
+use crate::{error::AppError, jwt::Claims, schema, AppState, PgPool};
 
 #[debug_handler(state = AppState)]
 pub async fn get_profile(

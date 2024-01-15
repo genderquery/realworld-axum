@@ -13,7 +13,9 @@ use jwt::Jwt;
 mod error;
 mod handlers;
 pub mod jwt;
+pub mod models;
 mod password;
+pub mod schema;
 
 pub type PgPool = Pool<ConnectionManager<PgConnection>>;
 
