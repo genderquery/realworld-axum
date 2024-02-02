@@ -33,3 +33,15 @@ impl From<jsonwebtoken::errors::Error> for AppError {
         AppError::InternalServerError(value.into())
     }
 }
+
+impl From<diesel::result::Error> for AppError {
+    fn from(value: diesel::result::Error) -> Self {
+        AppError::InternalServerError(value.into())
+    }
+}
+
+impl From<r2d2::Error> for AppError {
+    fn from(value: r2d2::Error) -> Self {
+        AppError::InternalServerError(value.into())
+    }
+}

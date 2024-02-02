@@ -13,6 +13,7 @@ diesel = { version = "2.1.4", features = ["postgres", "r2d2", "chrono"] }
 dotenvy = "0.15.7"
 jsonwebtoken = "9.2.0"
 password-hash = { version = "0.5.0", features = ["getrandom", "std"] }
+r2d2 = "0.8.10"
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 tokio = { version = "1.35.0", features = ["macros", "rt-multi-thread"] }

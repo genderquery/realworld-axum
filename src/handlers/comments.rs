@@ -39,33 +39,33 @@ pub async fn delete_comment(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewCommentRequest {
-    comment: NewComment,
+    pub comment: NewComment,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewComment {
-    body: String,
+    pub body: String,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MultipleCommentsResponse {
-    comments: Vec<Comment>,
+    pub comments: Vec<Comment>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SingleCommentResponse {
-    comment: Comment,
+    pub comment: Comment,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
-    id: u64,
-    created_at: String,
-    updated_at: String,
-    body: String,
-    author: Profile,
+    pub id: u64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub body: String,
+    pub author: Profile,
 }

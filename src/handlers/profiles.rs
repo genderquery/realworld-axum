@@ -38,14 +38,14 @@ pub async fn unfollow(
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProfileResponse {
-    profile: Profile,
+    pub profile: Profile,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
-    username: String,
-    bio: String,
-    image: String,
-    following: bool,
+    pub username: String,
+    pub bio: String,
+    pub image: String,
+    pub following: bool,
 }

@@ -11,5 +11,5 @@ pub async fn get_tags(State(pool): State<PgPool>) -> Result<Json<TagsResponse>, 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TagsResponse {
-    tags: Vec<String>,
+    pub tags: Vec<String>,
 }

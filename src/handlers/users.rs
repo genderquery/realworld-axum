@@ -56,52 +56,52 @@ pub struct UserResponse {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    email: String,
-    token: String,
-    username: String,
-    bio: String,
-    image: String,
+    pub email: String,
+    pub token: String,
+    pub username: String,
+    pub bio: String,
+    pub image: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewUserRequest {
-    user: NewUser,
+    pub user: NewUser,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewUser {
-    username: String,
-    email: String,
-    password: String,
+    pub username: String,
+    pub email: String,
+    pub password: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginUserRequest {
-    user: LoginUser,
+    pub user: LoginUser,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginUser {
-    email: String,
-    password: String,
+    pub email: String,
+    pub password: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateUserRequest {
-    user: UpdateUser,
+    pub user: UpdateUser,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateUser {
-    username: Option<String>,
-    email: Option<String>,
-    password: Option<String>,
-    bio: Option<String>,
-    image: Option<String>,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+    pub bio: Option<String>,
+    pub image: Option<String>,
 }

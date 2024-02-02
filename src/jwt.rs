@@ -8,7 +8,7 @@ use axum::{
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, TokenData, Validation};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct Claims {
     exp: u64,
     pub user_id: i32,
